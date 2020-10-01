@@ -1,0 +1,13 @@
+{% extends 'main/base.html' %}
+
+{% block title %}Профиль пользователя{% endblock %}
+
+{% block content %}
+<h2>Профиль пользовтеля {{ user.username }}</h2>
+{% if user.first_name and user.last_name %}
+<p>Здравстуйте, {{ user.first_name }} {{ user.last_name }}!</p>
+{% else %}
+<p>Здравстуйте!</p>
+{% endif %}
+<h3>Ваши посты</h3>
+{% endblock %}
