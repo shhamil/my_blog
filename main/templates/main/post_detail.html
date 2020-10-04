@@ -1,0 +1,18 @@
+{% extends 'main/base.html' %}
+{% block title %} {{ post.title }} - МойБлог {% endblock %}
+{% block content %}
+
+  <div class="card bg-light mt-3">
+    <div class="card-header text-muted">
+      <p>Автор: {{ post_author }}</p>
+    </div>
+    <div class="card-body">
+      <h5 class="card-title">{{ post.title }}</h5>
+      <p class="card-text">{{ post.body }}</p>
+
+    </div>
+    <div class="card-footer text-muted">
+      <p>Опубликовано: {{ post.pub_date }}</p>
+    </div>
+  </div>
+{% endblock %}

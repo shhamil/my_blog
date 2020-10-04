@@ -1,13 +1,33 @@
 {% extends 'main/base.html' %}
 
+{% load bootstrap4 %}
 {% block title %}Профиль пользователя{% endblock %}
 
+
 {% block content %}
-<h2>Профиль пользовтеля {{ user.username }}</h2>
+<h2>Профиль пользователя {{ user.username }}</h2>
 {% if user.first_name and user.last_name %}
 <p>Здравстуйте, {{ user.first_name }} {{ user.last_name }}!</p>
 {% else %}
 <p>Здравстуйте!</p>
 {% endif %}
 <h3>Ваши посты</h3>
+
+{% for post in posts %}
+<div class="card bg-light mt-3">
+  <div class="card-header">
+    {{ post.pub_date }}
+  </div>
+  <div class="card-body">
+    <h5 class="card-title">{{ post.title }}</h5>
+    <p class="card-text">{{ post.body|truncatewords:10 }}</p>
+    <a href="{% url 'main:post_detail' slug=post.slug %}" class="btn btn-outline-success my-2 my-sm-0">Читать полностью</a>
+  </div>
+  <div class="card-footer text-muted">
+  {% for tag in post.tags.all %}
+  <a href="{% url 'main:tag_detail' slug=tag.slug %}">{{ tag.title }}</a>
+  {% endfor %}
+  </div>
+</div>
+{% endfor %}
 {% endblock %}

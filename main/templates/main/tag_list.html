@@ -1,0 +1,11 @@
+{% extends 'main/base.html' %}
+{% block content %}
+<h2>Все тэги</h2>
+{% for tag in tags %}
+<div class="card bg-light mt-3">
+  <div class="card-footer text-muted">
+    <a href="{% url 'main:tag_detail' slug=tag.slug %}">{{ tag.title }}</a>
+  </div>
+</div>
+{% endfor %}
+{% endblock %}

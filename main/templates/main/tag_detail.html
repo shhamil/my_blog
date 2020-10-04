@@ -1,0 +1,24 @@
+{% extends "main/base.html" %}
+{% block title %}{{ tag.title }}{% endblock %}
+
+{% block content %}
+  <h1>Посты связанные с тэгом {{ tag.title }}</h1>
+  {% for post in tag.posts.all %}
+  <div class="card bg-light mt-3">
+    <div class="card-header">
+      {{ post.pub_date }}
+    </div>
+    <div class="card-body">
+      <h5 class="card-title">{{ post.title }}</h5>
+      <p class="card-text">{{ post.body|truncatewords:10 }}</p>
+      <a href="{% url 'main:post_detail' slug=post.slug %}" class="btn btn-outline-success my-2 my-sm-0">Читать полностью</a>
+    </div>
+
+    <div class="card-footer text-muted">
+    {% for tag in post.tags.all %}
+    <a href="{% url 'main:tag_detail' slug=tag.slug %}">{{ tag.title }}</a>
+    {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+{% endblock %}
