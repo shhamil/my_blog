@@ -9,8 +9,10 @@
 {% if user.first_name and user.last_name %}
 <p>Здравстуйте, {{ user.first_name }} {{ user.last_name }}!</p>
 {% else %}
+
 <p>Здравстуйте!</p>
 {% endif %}
+<a class="btn btn-outline-success my-2 my-sm-0 pt-1 pb-1" href="{% url 'main:profile_post_add' %}">Добавить пост</a>
 <h3>Ваши посты</h3>
 
 {% for post in posts %}
@@ -30,4 +32,5 @@
   </div>
 </div>
 {% endfor %}
+{% include "../pagination.html" with page=posts %}
 {% endblock %}

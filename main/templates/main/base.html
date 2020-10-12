@@ -10,19 +10,20 @@
   {% bootstrap_css %}
   <link rel="stylesheet" type="text/css" href="{% static 'main/style.css' %}">
   {% bootstrap_javascript jquery='slim' %}
+
 </head>
 <body class="">
-  <header class="mЬ-4">
+  <header class="">
     <hl class="display-1 tехt-сеntеr">МойБлог</hl>
   </header>
   <div class="row">
     <ul class="col nav justify-content-end border">
-      <li class="nav-item"><a class="nav-link " href="{% url 'main:index' %}">Главная</a></li>
-      <li class="nav-item"><a class="nav-link" href="{% url 'main:tag_list' %}">Тэги</a></li>
+      <li class="nav-item"><a class="nav-link btn btn-outline-success my-2 my-sm-0 mr-1" href="{% url 'main:index' %}">Главная</a></li>
+      <li class="nav-item"><a class="nav-link btn btn-outline-success my-2 my-sm-0 mr-1" href="{% url 'main:tag_list' %}">Тэги</a></li>
       {% if user.is_authenticated %}
       <li class="nav-item dropdown">
-        <a class="nav-link dropdown-toggle" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Профиль</a>
-        <div class="dropdown-menu">
+        <a class="nav-link dropdown-toggle btn btn-outline-success my-2 my-sm-0" data-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Профиль</a>
+        <div class="dropdown-menu" style="word-wrap: break-word;">
           <a class="dropdown-item" href="{% url 'main:profile' %}">Moи объявления</a>
           <a class="dropdown-item" href="{% url 'main:profile_change' %}">Изменить личные данные</a>
           <a class="dropdown-item" href="{% url 'main:password_change' %}">Изменить пароль</a>
@@ -44,7 +45,7 @@
     {% endblock %}
   </section>
   <footer class="">
-    <p class="text-right font-italic">&copy;читатели, 2020 г.</p>
+    <p class="text-right font-italic">&copy;МойБлог, 2020 г.</p>
   </footer>
 </body>
 </html>
