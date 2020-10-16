@@ -2,8 +2,8 @@
 {% block title %}{{ tag.title }}{% endblock %}
 
 {% block content %}
-  <h1>Посты связанные с тэгом {{ tag.title }}</h1>
-  {% for post in tag.posts.all %}
+  <h1>Посты связанные с тэгом {{ object.title }}</h1>
+  {% for post in object.posts.all %}
   <div class="card bg-light mt-3">
     <div class="card-header">
       {{ post.pub_date }}

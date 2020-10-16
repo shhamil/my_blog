@@ -14,31 +14,44 @@ class ChangeUserInfoForm(forms.ModelForm):
         fields = {'username', 'email', 'first_name', 'last_name',}
 
 
-class PostChangeForm(forms.ModelForm):
-    class Meta:
-        model = Post
-        fields = '__all__'
-        widgets = {'author': forms.HiddenInput, 'slug': forms.HiddenInput}
-# class PostForm(forms.ModelForm):
-#     class Meta:
-#         model = Post
-#         fields = '__all__'
-#         widgets = {'author': forms.HiddenInput, 'slug': forms.HiddenInput}
+class PostChangeForm(forms.Form):
+    title = forms.CharField(max_length=150)
+    body = forms.CharField()
+    tags = forms.ModelMultipleChoiceField(queryset=Tag.objects.all())
+
+    def clean_title(self):
+        new_title = self.cleaned_data['title']
+        if Post.objects.filter(title=new_title).exists():
+            raise ValidationError('Титл <{}> уже существует!'.format(new_title))
+        return new_title
+
+    def save(self, post):
+
+
+        post.title = self.cleaned_data['title']
+        post.slug = transliterate(self.cleaned_data['title'].lower())
+        post.body = self.cleaned_data['body']
+        post.tags.set(self.cleaned_data['tags'])
+        post.save()
+        return post
 
 class PostForm(forms.Form):
     title = forms.CharField(max_length=150)
-    slug = forms.CharField(max_length=150, widget = forms.HiddenInput())
     body = forms.CharField()
-    author = forms.CharField(max_length=50, widget = forms.HiddenInput())
     tags = forms.ModelMultipleChoiceField(queryset=Tag.objects.all())
 
+    def clean_title(self):
+        new_title = self.cleaned_data['title']
+        if Post.objects.filter(title=new_title).exists():
+            raise ValidationError('Титл <{}> уже существует!'.format(new_title))
+        return new_title
 
 
-    def save(self):
+    def save(self, authorname):
         new_post = Post.objects.create(title=self.cleaned_data['title'],
             slug=transliterate(self.cleaned_data['title'].lower()),
             body = self.cleaned_data['body'],
-            author = AdvUser.objects.get(username = self.cleaned_data['author'])
+            author = AdvUser.objects.get(username = authorname)
             )
         new_post.tags.set(self.cleaned_data['tags'])
 
@@ -65,21 +78,18 @@ class TagForm(forms.Form):
         return new_tag
 
 
-class UserCommentForm(forms.ModelForm):
-    class Meta:
-        model = Comment
-        fields = '__all__'
-        widgets = {'author': forms.HiddenInput,'post': forms.HiddenInput}
+class UserCommentForm(forms.Form):
+    body = forms.CharField()
+    def save(self, author, post):
+        new_comment = Comment.objects.create(author = author, post = post, content = self.cleaned_data['body'])
 
 
 
-class GuestCommentForm(forms.ModelForm):
+class GuestCommentForm(forms.Form):
     captcha = CaptchaField(label='Введите текст с картинки', error_messages={'invalid': 'Неправильный текст'})
-
-    class Meta:
-        model = Comment
-        fields = '__all__'
-        widgets = {'author': forms.HiddenInput, 'post': forms.HiddenInput}
+    body = forms.CharField()
+    def save(self, author, post):
+        new_comment = Comment.objects.create(author = author, post = post, content = body)
 
 class RegisterUserForm(forms.ModelForm):
     email = forms.EmailField(required=True, label='Адрес электронной почты')

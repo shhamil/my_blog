@@ -14,8 +14,10 @@
     </div>
     <div class="card-footer text-muted">
       <p class="pb-2">Опубликовано: {{ post.pub_date }}</p>
+      {% if user.username == post_author.username %}
       <a class='btn btn-outline-success my-2 my-sm-0' href="{% url 'main:profile_post_change' pk=post.pk %}">Редактировать</a>
       <a class='btn btn-outline-success my-2 my-sm-0 ml-2' href="{% url 'main:profile_post_delete' pk=post.pk %}">Удалить</a>
+      {% endif %}
     </div>
   </div>
   <h4 class="mt-5">Новый комментарий</h4>

@@ -3,12 +3,13 @@ from django.contrib.auth.views import LoginView, LogoutView
 from django.contrib.auth.decorators import login_required
 from django.urls import reverse_lazy
 from django.views.generic.edit import UpdateView, CreateView, DeleteView
+from django.views.generic.detail import DetailView
 from django.contrib.messages.views import SuccessMessageMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.views import PasswordChangeView
 from django.views.generic.base import TemplateView
 from django.core.signing import BadSignature
-from django.views.generic import View
+from django.views.generic import View, ListView
 from django.contrib.auth import logout
 from django.contrib import messages
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -33,58 +34,57 @@ def user_activate(request, sign):
     return render(request, template)
 
 
-# @login_required
-# def profile_post_add(request):
-#     if request.method == 'POST':
-#         form = PostForm(request.POST)
-#         if form.is_valid():
-#
-#             messages.add_message(request, messages.SUCCESS, 'Объявление добавлено')
-#             return redirect('main:profile')
-#     else:
-#         form = PostForm(initial={'author': request.user.username})
-#     context = {'form': form}
-#     return render(request, 'main/profile_post_add.html', context)
 
 class PostCreate(LoginRequiredMixin, View):
     def get(self, request):
-        form = PostForm(initial={'author': request.user.username, 'slug': 'sds'})
+        form = PostForm()
         return render(request, 'main/profile_post_add.html', context={'form': form})
 
     def post(self, request):
         bound_form = PostForm(request.POST)
         if bound_form.is_valid():
-            new_post = bound_form.save()
+            new_post = bound_form.save(request.user.username)
             messages.add_message(request, messages.SUCCESS, 'Пост добавлен')
             return redirect('main:profile')
         return render(request, 'main/profile_post_add.html', context={'form': bound_form})
 
+class PostChange(LoginRequiredMixin, View):
+    def get(self, request, pk):
+        post = get_object_or_404(Post, pk=pk)
+        initial_data = {'title': post.title, 'body': post.body, 'tags': post.tags.all()}
+        form = PostChangeForm(initial=initial_data)
+        context = {'form': form}
+        return render(request, 'main/profile_post_change.html', context)
 
-
-@login_required
-def profile_post_change(request, pk):
-    post = get_object_or_404(Post, pk=pk)
-    if request.method == 'POST':
-        form = PostChangeForm(request.POST, request.FILES, instance=post)
+    def post(self, request, pk):
+        post = get_object_or_404(Post, pk=pk)
+        form = PostChangeForm(request.POST)
         if form.is_valid():
-            post = form.save()
+            post = form.save(post)
             messages.add_message(request, messages.SUCCESS, 'Обьявление исправлено')
             return redirect('main:profile')
-    else:
-        form = PostChangeForm(instance=post)
-    context = {'form': form}
-    return render(request, 'main/profile_post_change.html', context)
+        context = {'form': form}
+        return render(request, 'main/profile_post_change.html', context)
 
-@login_required
-def profile_post_delete(request, pk):
-    post = get_object_or_404(Post, pk=pk)
-    if request.method == 'POST':
-        post.delete()
-        messages.add_message(request, messages.SUCCESS, 'Обьявление удалено')
-        return redirect('main:profile')
-    else:
-        context = {'post':post}
-        return render(request, 'main/profile_post_delete.html', context)
+# @login_required
+# def profile_post_change(request, pk):
+#     post = get_object_or_404(Post, pk=pk)
+#     if request.method == 'POST':
+#         form = PostChangeForm(request.POST, instance=post)
+#         if form.is_valid():
+#             post = form.save()
+#             messages.add_message(request, messages.SUCCESS, 'Обьявление исправлено')
+#             return redirect('main:profile')
+#     else:
+#         form = PostChangeForm(instance=post)
+#     context = {'form': form}
+#     return render(request, 'main/profile_post_change.html', context)
+
+class PostDelete(LoginRequiredMixin, DeleteView):
+    model = Post
+    template_name = 'main/profile_post_delete.html'
+    success_url = reverse_lazy('main:profile')
+
 
 
 class RegisterDoneView(TemplateView):
@@ -143,70 +143,98 @@ class ChangeUserInfoView(SuccessMessageMixin, LoginRequiredMixin, UpdateView):
 class MBLogoutView(LoginRequiredMixin, LogoutView):
     template_name = 'main/logout.html'
 
+class Profile(LoginRequiredMixin, ListView):
+    model = Post
+    paginate_by = 5
+    template_name = 'main/profile.html'
+    context_object_name = 'posts'
 
-@login_required
-def profile(request):
-    object_list = Post.objects.filter(author = request.user.pk)
-    paginator = Paginator(object_list, 5)
-    page = request.GET.get('page')
-    try:
-        posts = paginator.page(page)
-    except PageNotAnInteger:
-        posts = paginator.page(1)
-    except EmptyPage:
-        posts = paginator.page(paginator.num_pages)
+    def get_queryset(self):
+        queryset = Post.objects.filter(author = self.request.user.pk)
+        return queryset
 
-    return render(request, 'main/profile.html', { 'page': page, 'posts': posts})
+# @login_required
+# def profile(request):
+#     object_list = Post.objects.filter(author = request.user.pk)
+#     paginator = Paginator(object_list, 5)
+#     page = request.GET.get('page')
+#     try:
+#         posts = paginator.page(page)
+#     except PageNotAnInteger:
+#         posts = paginator.page(1)
+#     except EmptyPage:
+#         posts = paginator.page(paginator.num_pages)
+#
+#     return render(request, 'main/profile.html', { 'page': page, 'posts': posts})
 
 
 class MBLoginView(LoginView):
     template_name = 'main/login.html'
 
-def tag_detail(request, slug):
-    tag = get_object_or_404(Tag, slug__iexact = slug)
-    return render(request, 'main/tag_detail.html', {'tag': tag})
-
-def post_detail(request, slug):
-    post = get_object_or_404(Post, slug__iexact=slug)
-    post_author = get_object_or_404(AdvUser, pk = post.author.pk);
-    object_list = Comment.objects.filter(post=post)
-    paginator = Paginator(object_list, 10)
-    page = request.GET.get('page')
-    try:
-        comments = paginator.page(page)
-    except PageNotAnInteger:
-        comments = paginator.page(1)
-    except EmptyPage:
-        comments = paginator.page(paginator.num_pages)
+class TagDetail(DetailView):
+    model = Tag
 
 
 
-    initial = {'post': post.pk}
-    if request.user.is_authenticated:
-        initial['author'] = request.user.username
-        form_class = UserCommentForm
-    else:
-        initial['author'] = 'Гость'
-        form_class = GuestCommentForm
-    form = form_class(initial=initial)
-    if request.method == 'POST':
+class PostDetail(View):
+    def get(self, request, slug):
+        post = get_object_or_404(Post, slug__iexact=slug)
+        post_author = get_object_or_404(AdvUser, pk = post.author.pk);
+        if request.user.is_authenticated:
+            form = UserCommentForm
+        else:
+            form = GuestCommentForm
+        object_list = Comment.objects.filter(post=post)
+        paginator = Paginator(object_list, 10)
+        page = request.GET.get('page')
+        try:
+            comments = paginator.page(page)
+        except PageNotAnInteger:
+            comments = paginator.page(1)
+        except EmptyPage:
+            comments = paginator.page(paginator.num_pages)
+        context = {'page':page,'post': post, 'post_author': post_author, 'comments': comments, 'form': form}
+        return render(request, 'main/post_detail.html', context)
+
+    def post(self, request, slug):
+        post = get_object_or_404(Post, slug__iexact=slug)
+        post_author = get_object_or_404(AdvUser, pk = post.author.pk);
+        if request.user.is_authenticated:
+            form = UserCommentForm
+        else:
+            form = GuestCommentForm
+        object_list = Comment.objects.filter(post=post)
+        paginator = Paginator(object_list, 10)
+        page = request.GET.get('page')
+        try:
+            comments = paginator.page(page)
+        except PageNotAnInteger:
+            comments = paginator.page(1)
+        except EmptyPage:
+            comments = paginator.page(paginator.num_pages)
+        if request.user.is_authenticated:
+            author = request.user.username
+            form_class = UserCommentForm
+        else:
+            author = 'Гость'
+            form_class = GuestCommentForm
+        form = form_class()
         c_form = form_class(request.POST)
         if c_form.is_valid():
-            c_form.save()
+            c_form.save(author, post)
             messages.add_message(request, messages.SUCCESS, 'Комментарий добавлен')
             return redirect('/posts/{}'.format(slug))
         else:
             form = c_form
-            messages.add_message(request, messages.WARNING, 'Комментарий не добавлен')
+            messages.add_message(request, messages.WARNING, initial)
+        context = {'page':page,'post': post, 'post_author': post_author, 'comments': comments, 'form': form}
+        return render(request, 'main/post_detail.html', context)
 
-
-    context = {'page':page,'post': post, 'post_author': post_author, 'comments': comments, 'form': form}
-    return render(request, 'main/post_detail.html', context)
-
-
-def tag_list(request):
-    tags = Tag.objects.all()
-    return render(request, 'main/tag_list.html', {'tags': tags})
+class TagList(ListView):
+    queryset = Tag.objects.all()
+    paginate_by = 2
+    template_name = 'main/tag_list.html'
+    context_object_name = 'tags'
 
 
 class TagCreate(LoginRequiredMixin, View):
@@ -222,16 +250,8 @@ class TagCreate(LoginRequiredMixin, View):
             return redirect('main:tag_list')
         return render(request, 'main/tag_create.html', context={'form': bound_form})
 
-
-def post_list(request):
-    object_list = Post.objects.all()
-    paginator = Paginator(object_list, 5)
-    page = request.GET.get('page')
-    try:
-        posts = paginator.page(page)
-    except PageNotAnInteger:
-        posts = paginator.page(1)
-    except EmptyPage:
-        posts = paginator.page(paginator.num_pages)
-    return render(request, 'main/index.html', {'page': page,'posts': posts})
-# Create your views here.
+class PostList(ListView):
+    queryset = Post.objects.all()
+    paginate_by = 5
+    template_name = 'main/index.html'
+    context_object_name = 'posts'
