@@ -1,22 +1,22 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.views import LoginView, LogoutView
-from django.contrib.auth.decorators import login_required
-from django.urls import reverse_lazy
-from django.views.generic.edit import UpdateView, CreateView, DeleteView
-from django.views.generic.detail import DetailView
-from django.contrib.messages.views import SuccessMessageMixin
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.views import PasswordChangeView
-from django.views.generic.base import TemplateView
-from django.core.signing import BadSignature
-from django.views.generic import View, ListView
-from django.contrib.auth import logout
 from django.contrib import messages
-from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
-from .utils import signer
+from django.contrib.auth import logout
+from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.views import LoginView, LogoutView
+from django.contrib.auth.views import PasswordChangeView
+from django.contrib.messages.views import SuccessMessageMixin
+from django.core.signing import BadSignature
+from django.shortcuts import redirect
+from django.urls import reverse_lazy
+from django.views.generic import View, ListView
+from django.views.generic.base import TemplateView
+from django.views.generic.detail import DetailView
+from django.views.generic.edit import UpdateView, CreateView, DeleteView
+
+from .forms import ChangeUserInfoForm, RegisterUserForm, PostForm, TagForm, PostChangeForm, UserCommentForm, \
+    GuestCommentForm
 from .models import *
-from .forms import ChangeUserInfoForm, RegisterUserForm, PostForm, TagForm, PostChangeForm, UserCommentForm, GuestCommentForm
-from .utils import ObjectDetailMixin, transliterate
+from .utils import signer
+
 
 def user_activate(request, sign):
     try:
@@ -34,51 +34,27 @@ def user_activate(request, sign):
     return render(request, template)
 
 
+class PostCreate(LoginRequiredMixin, SuccessMessageMixin, CreateView):
+    model = Post
+    template_name = 'main/profile_post_add.html'
+    form_class = PostForm
+    success_message = 'Пост добавлен'
+    success_url = reverse_lazy('main:profile')
 
-class PostCreate(LoginRequiredMixin, View):
-    def get(self, request):
-        form = PostForm()
-        return render(request, 'main/profile_post_add.html', context={'form': form})
+    def get_form_kwargs(self):
+        kwargs = super(PostCreate, self).get_form_kwargs()
+        kwargs['author'] = self.request.user
+        return kwargs
 
-    def post(self, request):
-        bound_form = PostForm(request.POST)
-        if bound_form.is_valid():
-            new_post = bound_form.save(request.user.username)
-            messages.add_message(request, messages.SUCCESS, 'Пост добавлен')
-            return redirect('main:profile')
-        return render(request, 'main/profile_post_add.html', context={'form': bound_form})
+class PostChange(LoginRequiredMixin, UpdateView):
 
-class PostChange(LoginRequiredMixin, View):
-    def get(self, request, pk):
-        post = get_object_or_404(Post, pk=pk)
-        initial_data = {'title': post.title, 'body': post.body, 'tags': post.tags.all()}
-        form = PostChangeForm(initial=initial_data)
-        context = {'form': form}
-        return render(request, 'main/profile_post_change.html', context)
+    model = Post
+    template_name = 'main/profile_post_change.html'
+    form_class = PostChangeForm
+    success_url = reverse_lazy('main:profile')
+    success_message = 'Пост изменен'
 
-    def post(self, request, pk):
-        post = get_object_or_404(Post, pk=pk)
-        form = PostChangeForm(request.POST)
-        if form.is_valid():
-            post = form.save(post)
-            messages.add_message(request, messages.SUCCESS, 'Обьявление исправлено')
-            return redirect('main:profile')
-        context = {'form': form}
-        return render(request, 'main/profile_post_change.html', context)
 
-# @login_required
-# def profile_post_change(request, pk):
-#     post = get_object_or_404(Post, pk=pk)
-#     if request.method == 'POST':
-#         form = PostChangeForm(request.POST, instance=post)
-#         if form.is_valid():
-#             post = form.save()
-#             messages.add_message(request, messages.SUCCESS, 'Обьявление исправлено')
-#             return redirect('main:profile')
-#     else:
-#         form = PostChangeForm(instance=post)
-#     context = {'form': form}
-#     return render(request, 'main/profile_post_change.html', context)
 
 class PostDelete(LoginRequiredMixin, DeleteView):
     model = Post
@@ -86,9 +62,9 @@ class PostDelete(LoginRequiredMixin, DeleteView):
     success_url = reverse_lazy('main:profile')
 
 
-
 class RegisterDoneView(TemplateView):
     template_name = 'main/register_done.html'
+
 
 class DeleteUserView(LoginRequiredMixin, DeleteView):
     model = AdvUser
@@ -130,18 +106,15 @@ class ChangeUserInfoView(SuccessMessageMixin, LoginRequiredMixin, UpdateView):
     success_url = reverse_lazy('main:profile')
     success_message = 'Личные данные пользователям изменены'
 
-    def dispatch(self, request, *args, **kwargs):
-        self.user_id = request.user.pk
-        return super().dispatch(request, *args, **kwargs)
-
     def get_object(self, queryset=None):
         if not queryset:
             queryset = self.get_queryset()
-        return get_object_or_404(queryset, pk=self.user_id)
+        return get_object_or_404(queryset, pk=self.request.user.id)
 
 
 class MBLogoutView(LoginRequiredMixin, LogoutView):
     template_name = 'main/logout.html'
+
 
 class Profile(LoginRequiredMixin, ListView):
     model = Post
@@ -150,85 +123,48 @@ class Profile(LoginRequiredMixin, ListView):
     context_object_name = 'posts'
 
     def get_queryset(self):
-        queryset = Post.objects.filter(author = self.request.user.pk)
+        queryset = Post.objects.filter(author=self.request.user.pk)
         return queryset
-
-# @login_required
-# def profile(request):
-#     object_list = Post.objects.filter(author = request.user.pk)
-#     paginator = Paginator(object_list, 5)
-#     page = request.GET.get('page')
-#     try:
-#         posts = paginator.page(page)
-#     except PageNotAnInteger:
-#         posts = paginator.page(1)
-#     except EmptyPage:
-#         posts = paginator.page(paginator.num_pages)
-#
-#     return render(request, 'main/profile.html', { 'page': page, 'posts': posts})
 
 
 class MBLoginView(LoginView):
     template_name = 'main/login.html'
 
+
 class TagDetail(DetailView):
     model = Tag
 
 
+class PostDetail(DetailView):
+    model = Post
+    template_name = 'main/post_detail.html'
 
-class PostDetail(View):
-    def get(self, request, slug):
-        post = get_object_or_404(Post, slug__iexact=slug)
-        post_author = get_object_or_404(AdvUser, pk = post.author.pk);
-        if request.user.is_authenticated:
-            form = UserCommentForm
-        else:
-            form = GuestCommentForm
-        object_list = Comment.objects.filter(post=post)
-        paginator = Paginator(object_list, 10)
-        page = request.GET.get('page')
-        try:
-            comments = paginator.page(page)
-        except PageNotAnInteger:
-            comments = paginator.page(1)
-        except EmptyPage:
-            comments = paginator.page(paginator.num_pages)
-        context = {'page':page,'post': post, 'post_author': post_author, 'comments': comments, 'form': form}
-        return render(request, 'main/post_detail.html', context)
-
-    def post(self, request, slug):
-        post = get_object_or_404(Post, slug__iexact=slug)
-        post_author = get_object_or_404(AdvUser, pk = post.author.pk);
-        if request.user.is_authenticated:
-            form = UserCommentForm
-        else:
-            form = GuestCommentForm
-        object_list = Comment.objects.filter(post=post)
-        paginator = Paginator(object_list, 10)
-        page = request.GET.get('page')
-        try:
-            comments = paginator.page(page)
-        except PageNotAnInteger:
-            comments = paginator.page(1)
-        except EmptyPage:
-            comments = paginator.page(paginator.num_pages)
-        if request.user.is_authenticated:
-            author = request.user.username
+    def get_form_class(self):
+        if self.request.user.is_authenticated:
             form_class = UserCommentForm
         else:
-            author = 'Гость'
             form_class = GuestCommentForm
-        form = form_class()
-        c_form = form_class(request.POST)
-        if c_form.is_valid():
-            c_form.save(author, post)
-            messages.add_message(request, messages.SUCCESS, 'Комментарий добавлен')
+        return form_class
+
+    def get_object(self):
+        obj =  super().get_object()
+        return obj
+
+    def get_context_data(self, **kwargs):
+        context = super(PostDetail, self).get_context_data(**kwargs)
+        context['comments'] = Comment.objects.filter(post=self.object)
+        context['form'] = self.get_form_class()
+        return context
+
+    def post(self, request, slug):
+        form = self.get_form_class()
+        form = form(request.POST)
+        if form.is_valid():
+            form.save(self.request.user.username, self.get_object())
+            messages.add_message(request, messages.SUCCESS, 'Комментарий добавлен!')
             return redirect('/posts/{}'.format(slug))
-        else:
-            form = c_form
-            messages.add_message(request, messages.WARNING, initial)
-        context = {'page':page,'post': post, 'post_author': post_author, 'comments': comments, 'form': form}
-        return render(request, 'main/post_detail.html', context)
+        return render(request, self.template_name, {'form': form})
+
 
 class TagList(ListView):
     queryset = Tag.objects.all()
@@ -237,18 +173,14 @@ class TagList(ListView):
     context_object_name = 'tags'
 
 
-class TagCreate(LoginRequiredMixin, View):
-    def get(self, request):
-        form = TagForm()
-        return render(request, 'main/tag_create.html', context={'form': form})
+class TagCreate(LoginRequiredMixin, CreateView):
+    model = Tag
+    template_name = 'main/tag_create.html'
+    form_class = TagForm
+    success_message = 'Тэг добавлен'
+    success_url = reverse_lazy('main:tag_list')
 
-    def post(self, request):
-        bound_form = TagForm(request.POST)
-        if bound_form.is_valid():
-            new_tag = bound_form.save()
-            messages.add_message(request, messages.SUCCESS, 'Тэг добавлен')
-            return redirect('main:tag_list')
-        return render(request, 'main/tag_create.html', context={'form': bound_form})
+
 
 class PostList(ListView):
     queryset = Post.objects.all()

@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.dispatch import Signal
-
+from django.shortcuts import reverse
 from .utils import *
 
 user_registrated = Signal(providing_args=['instance'])
@@ -9,6 +9,7 @@ user_registrated = Signal(providing_args=['instance'])
 
 def user_registrated_dispatcher(sender, **kwargs):
     send_activation_notification(kwargs['instance'])
+
 
 user_registrated.connect(user_registrated_dispatcher)
 
@@ -22,10 +23,9 @@ class AdvUser(AbstractUser):
         super().delete(*args, **kwargs)
 
     class Meta(AbstractUser.Meta):
-            pass
+        pass
 
-from django.shortcuts import reverse
-# Create your models here.
+
 class Post(models.Model):
     title = models.CharField(max_length=150, db_index=True, verbose_name='Заголовок поста')
     slug = models.SlugField(max_length=150, unique=True)
@@ -34,11 +34,16 @@ class Post(models.Model):
     tags = models.ManyToManyField('Tag', blank=True, related_name='posts')
     pub_date = models.DateTimeField(auto_now_add=True, db_index=True)
 
+    def save(self, *args, **kwargs):
+        self.slug = transliterate(self.title)
+        super().save(*args, **kwargs)
+
     def get_absolute_url(self):
         return reverse('post_detail', kwargs={'slug': self.slug})
 
     def __str__(self):
         return '{}'.format(self.title)
+
 
 class Tag(models.Model):
     title = models.CharField(max_length=50)
@@ -49,6 +54,7 @@ class Tag(models.Model):
 
     def __str__(self):
         return '{}'.format(self.title)
+
 
 class Comment(models.Model):
     post = models.ForeignKey(Post, on_delete=models.CASCADE, verbose_name='Пост')

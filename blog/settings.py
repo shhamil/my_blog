@@ -39,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'main.apps.MainConfig',
     'bootstrap4',
-    'captcha'
+    'captcha',
+    'social_auth',
 ]
 
 MIDDLEWARE = [
@@ -69,6 +70,14 @@ TEMPLATES = [
         },
     },
 ]
+
+AUTHENTICATION_BACKENDS = (
+    'social_auth.backends.contrib.vkontakte.VKontakteOAuth2Backend',
+    'django.contrib.auth.backends.ModelBackend',
+)
+
+VK_APP_ID = '7689208'
+VK_API_SECRET = '0Q5TR8ymx5fV4k85bElz'
 
 WSGI_APPLICATION = 'blog.wsgi.application'
 

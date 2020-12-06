@@ -7,6 +7,7 @@ from .models import *
 
 
 class ChangeUserInfoForm(forms.ModelForm):
+
     email = forms.EmailField(required=True, label='Адрес электронной почты')
 
     class Meta:
@@ -14,10 +15,7 @@ class ChangeUserInfoForm(forms.ModelForm):
         fields = {'username', 'email', 'first_name', 'last_name',}
 
 
-class PostChangeForm(forms.Form):
-    title = forms.CharField(max_length=150)
-    body = forms.CharField()
-    tags = forms.ModelMultipleChoiceField(queryset=Tag.objects.all())
+class PostChangeForm(forms.ModelForm):
 
     def clean_title(self):
         new_title = self.cleaned_data['title']
@@ -25,71 +23,70 @@ class PostChangeForm(forms.Form):
             raise ValidationError('Титл <{}> уже существует!'.format(new_title))
         return new_title
 
-    def save(self, post):
+    class Meta:
+        model = Post
+        fields = ('title', 'body', 'tags')
 
 
-        post.title = self.cleaned_data['title']
-        post.slug = transliterate(self.cleaned_data['title'].lower())
-        post.body = self.cleaned_data['body']
-        post.tags.set(self.cleaned_data['tags'])
+class PostForm(forms.ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        self.author = kwargs.pop('author', None)
+        super(PostForm, self).__init__(*args, **kwargs)
+
+    def clean_title(self):
+        new_title = self.cleaned_data['title']
+        if Post.objects.filter(title=new_title).exists():
+            raise ValidationError('Титл <{}> уже существует!'.format(new_title))
+        return new_title
+
+    def save(self, *args, **kwargs):
+        post = super().save(commit=False)
+        post.author = self.author
         post.save()
         return post
 
-class PostForm(forms.Form):
-    title = forms.CharField(max_length=150)
-    body = forms.CharField()
-    tags = forms.ModelMultipleChoiceField(queryset=Tag.objects.all())
+    class Meta:
+        model = Post
+        fields = ('title', 'body', 'tags')
+
+
+
+class TagForm(forms.ModelForm):
 
     def clean_title(self):
-        new_title = self.cleaned_data['title']
-        if Post.objects.filter(title=new_title).exists():
-            raise ValidationError('Титл <{}> уже существует!'.format(new_title))
-        return new_title
+        title = self.cleaned_data['title']
 
-
-    def save(self, authorname):
-        new_post = Post.objects.create(title=self.cleaned_data['title'],
-            slug=transliterate(self.cleaned_data['title'].lower()),
-            body = self.cleaned_data['body'],
-            author = AdvUser.objects.get(username = authorname)
-            )
-        new_post.tags.set(self.cleaned_data['tags'])
-
-
-        return new_post
-
-class TagForm(forms.Form):
-    title = forms.CharField(max_length=50)
-
-
-    def clean_title(self):
-        new_title = self.cleaned_data['title']
-
-        if new_title == 'Create' or new_title == 'create':
+        if title == 'Create' or title == 'create':
             raise ValidationError('Tag may not be "Create"')
-        return new_title
-
+        return title
 
     def save(self):
-        new_tag = Tag.objects.create(title=self.cleaned_data['title'],
-            slug=transliterate(self.cleaned_data['title'].lower())
-        )
+        tag = super().save(commit=False)
+        tag.title = self.cleaned_data['title']
+        tag.slug = transliterate(self.cleaned_data['title'].lower())
+        tag.save()
+        return tag
 
-        return new_tag
+    class Meta:
+        model = Tag
+        fields = ('title',)
 
 
 class UserCommentForm(forms.Form):
     body = forms.CharField()
+
     def save(self, author, post):
         new_comment = Comment.objects.create(author = author, post = post, content = self.cleaned_data['body'])
-
 
 
 class GuestCommentForm(forms.Form):
     captcha = CaptchaField(label='Введите текст с картинки', error_messages={'invalid': 'Неправильный текст'})
     body = forms.CharField()
+
     def save(self, author, post):
-        new_comment = Comment.objects.create(author = author, post = post, content = body)
+        new_comment = Comment.objects.create(author=author, post=post, content= self.cleaned_data['body'])
+
 
 class RegisterUserForm(forms.ModelForm):
     email = forms.EmailField(required=True, label='Адрес электронной почты')

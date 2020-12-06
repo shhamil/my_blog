@@ -5,7 +5,7 @@
 
   <div class="card bg-light mt-3">
     <div class="card-header text-muted">
-        <p>Автор: {{ post_author }}</p>
+        <p>Автор: {{ post.author.username }}</p>
     </div>
     <div class="card-body">
       <h5 class="card-title">{{ post.title }}</h5>
@@ -14,7 +14,7 @@
     </div>
     <div class="card-footer text-muted">
       <p class="pb-2">Опубликовано: {{ post.pub_date }}</p>
-      {% if user.username == post_author.username %}
+      {% if user.username == post.author.username %}
       <a class='btn btn-outline-success my-2 my-sm-0' href="{% url 'main:profile_post_change' pk=post.pk %}">Редактировать</a>
       <a class='btn btn-outline-success my-2 my-sm-0 ml-2' href="{% url 'main:profile_post_delete' pk=post.pk %}">Удалить</a>
       {% endif %}
